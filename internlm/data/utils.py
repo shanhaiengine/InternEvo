@@ -1,3 +1,5 @@
+# adapted from https://github.com/InternLM/xtuner/blob/main/xtuner/model/modules/dispatch/utils.py
+
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 import os
@@ -6,6 +8,7 @@ import re
 import torch
 
 from internlm.core.context import global_context as gpc
+from internlm.core.context.process_group_initializer import ParallelMode
 
 
 def get_dataset_type_ids_map(path):
@@ -72,8 +75,8 @@ def packed_data_normalizer(data, label):
     data["max_seqlen"] = (data["cu_seqlens"][1:] - data["cu_seqlens"][:-1]).max().item()
 
     if gpc.config.model_type == "hf":
-        data.pop("cu_seqlens")
-        data.pop("max_seqlen")
+        gpc.config.data[f"cu_seqlens_data_rank{gpc.get_local_rank(ParallelMode.DATA)}"] = data.pop("cu_seqlens")
+        gpc.config.data[f"max_seqlen_data_rank{gpc.get_local_rank(ParallelMode.DATA)}"] = data.pop("max_seqlen")
         data["position_ids"] = data.pop("indexes")
         data["attention_mask"] = torch.ones(
             (data["input_ids"].shape), dtype=torch.bool, device=data["input_ids"].device
