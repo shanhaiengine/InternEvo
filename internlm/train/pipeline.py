@@ -565,17 +565,10 @@ def record_current_batch_training_metrics(
 
         num_tokens_in_batch = batch[1].nelement()
         real_num_tokens = math.ceil(acc_perplex.pop("real_token_num") / gpc.get_world_size(ParallelMode.GLOBAL))
-        # TODO: check logic
-        if gpc.config.data.type == "hf" and gpc.config.model_type == "hf" and not gpc.config.data.use_packed_dataset:
-            num_samples_in_batch = gpc.config.data.micro_bsz * gpc.config.data.micro_num
-            max_length_in_batch = batch[0]["attention_mask"].sum(dim=1).max().item()
-            max_samples_in_batch = gpc.config.data.micro_bsz
-            min_samples_in_batch = gpc.config.data.micro_bsz
-        else:
-            num_samples_in_batch = sum([len(b) - 1 for b in batch[0]["cu_seqlens"]])
-            max_length_in_batch = max([(b[1:] - b[:-1]).max().item() for b in batch[0]["cu_seqlens"]])
-            max_samples_in_batch = max([len(b) - 1 for b in batch[0]["cu_seqlens"]])
-            min_samples_in_batch = min([len(b) - 1 for b in batch[0]["cu_seqlens"]])
+        num_samples_in_batch = sum([len(b) - 1 for b in batch[0]["cu_seqlens"]])
+        max_length_in_batch = max([(b[1:] - b[:-1]).max().item() for b in batch[0]["cu_seqlens"]])
+        max_samples_in_batch = max([len(b) - 1 for b in batch[0]["cu_seqlens"]])
+        min_samples_in_batch = min([len(b) - 1 for b in batch[0]["cu_seqlens"]])
         time_cost = time.time() - start_time
         tk_per_gpu = round(
             num_tokens_in_batch * gpc.get_world_size(ParallelMode.DATA) / gpc.get_world_size(ParallelMode.GLOBAL),
