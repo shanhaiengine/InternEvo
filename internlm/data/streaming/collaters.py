@@ -1,5 +1,6 @@
 import torch
 
+
 def pack_collate_fn(batch, micro_num, micro_bsz, seq_len):
     packed_length = micro_bsz * seq_len
 

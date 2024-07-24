@@ -127,7 +127,10 @@ def get_hf_train_loader_items(data_cfg):
         subset_name=data_cfg.get("subset_name", None),
     )
     train_ds = HuggingFacePackedDataset(
-        dataset=train_ds, seq_len=data_cfg.seq_len, micro_bsz=data_cfg.micro_bsz, pad_token_id=gpc.config.model.get("pad_token_id", 0)
+        dataset=train_ds,
+        seq_len=data_cfg.seq_len,
+        micro_bsz=data_cfg.micro_bsz,
+        pad_token_id=gpc.config.model.get("pad_token_id", 0),
     )
     train_sampler = StreamingStaticBatchSampler(
         batch_size=data_cfg.micro_num, rampup_batch_size=data_cfg.rampup_batch_size
