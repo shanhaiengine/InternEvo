@@ -6,6 +6,7 @@ communication for isp parallel.
 
 from abc import ABC, abstractmethod
 from functools import partial
+import math
 from typing import Any, Callable, Dict, List, Tuple, Union
 
 import torch
@@ -891,21 +892,16 @@ class DistributedAttention(nn.Module):
         return context
 
 
-def auto_wrap_distributed_attention(cls: nn.Module) -> Callable[[bool, Any, float], nn.Module]:
+def auto_wrap_distributed_attention(cls_or_func: Union[nn.Module, Callable]) -> Callable[[bool, Any, float], nn.Module]:
     """
     Wrap a local attention module to a distributed one, which will be used in the ISP parallelism.
     """
 
     # should we impl distributed attention as a metaclass?
-    def _attetion_constructor(
+    def _attetion_cls_constructor(
         local_attn_cls: type, causal=False, softmax_scale=None, attention_dropout=0.0
     ) -> nn.Module:
-        try:
-            tp_mode = gpc.config.parallel["tensor"].get("mode", "mtp")
-        except AttributeError:
-            tp_mode = "mtp"
-
-        if tp_mode != "isp":
+        if gpc.config.parallel["tensor"].get("mode", "mtp") != "isp":
             return local_attn_cls(causal, softmax_scale, attention_dropout)
         else:
             return DistributedAttention(
@@ -913,4 +909,17 @@ def auto_wrap_distributed_attention(cls: nn.Module) -> Callable[[bool, Any, floa
                 sequence_process_group=gpc.get_group(ParallelMode.TENSOR),
             )
 
-    return partial(_attetion_constructor, local_attn_cls=cls)
+    def _attention_func_constructor(local_attn_func: Callable, *args, **kwargs) -> Callable:
+        if gpc.config.parallel["tensor"].get("mode", "mtp") != "isp":
+            return local_attn_func(*args, **kwargs)
+        else:
+            return DistributedAttention(
+                local_attention=local_attn_func, sequence_process_group=gpc.get_group(ParallelMode.TENSOR)
+            )(*args, **kwargs)
+
+    if isinstance(cls_or_func, nn.Module):
+        wrapper = partial(_attetion_cls_constructor, local_attn_cls=cls_or_func)
+    elif isinstance(cls_or_func, Callable):
+        wrapper = partial(_attention_func_constructor, local_attn_cls=cls_or_func)
+
+    return wrapper

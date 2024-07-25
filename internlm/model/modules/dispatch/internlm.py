@@ -10,15 +10,7 @@ from internlm.core.context import ParallelMode
 from internlm.core.context import global_context as gpc
 
 from .triton_kernels import apply_rotary_emb
-
-SUPPORT_FLASH2 = False
-
-try:
-    from flash_attn import flash_attn_func, flash_attn_varlen_func
-
-    SUPPORT_FLASH2 = True
-except ImportError:
-    pass
+from .attention import SUPPORT_FLASH2, flash_attn_wo_mask, varlen_flash_attn
 
 
 class InternLMRotaryEmbedding(torch.nn.Module):
@@ -103,7 +95,7 @@ def internlm_attn_forward(
         query_states = query_states.transpose(1, 2)
         key_states = key_states.transpose(1, 2)
         value_states = value_states.transpose(1, 2)
-        attn_output = flash_attn_func(query_states, key_states, value_states, causal=True)
+        attn_output = flash_attn_wo_mask(query_states, key_states, value_states, causal=True)
         attn_output = attn_output.contiguous()
     else:
         # use flash attention implemented by pytorch
@@ -172,7 +164,7 @@ def internlm_varlen_attn_forward(
     assert SUPPORT_FLASH2
     if use_varlen_atten:
         q_unpad, k_unpad, v_unpad = query_states.flatten(0, 1), key_states.flatten(0, 1), value_states.flatten(0, 1)
-        attn_output = flash_attn_varlen_func(
+        attn_output = varlen_flash_attn(
             q_unpad,
             k_unpad,
             v_unpad,
@@ -185,7 +177,7 @@ def internlm_varlen_attn_forward(
             causal=True,
         )
     else:
-        attn_output = flash_attn_func(query_states, key_states, value_states, causal=True)
+        attn_output = flash_attn_wo_mask(query_states, key_states, value_states, causal=True)
 
     attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
 
