@@ -909,7 +909,7 @@ def auto_wrap_distributed_attention(cls_or_func: Union[nn.Module, Callable]) -> 
                 sequence_process_group=gpc.get_group(ParallelMode.TENSOR),
             )
 
-    def _attention_func_constructor(local_attn_func: Callable, *args, **kwargs) -> Callable:
+    def _attention_func_constructor(*args, local_attn_func = None, **kwargs) -> Callable:
         if gpc.config.parallel["tensor"].get("mode", "mtp") != "isp":
             return local_attn_func(*args, **kwargs)
         else:
@@ -920,6 +920,6 @@ def auto_wrap_distributed_attention(cls_or_func: Union[nn.Module, Callable]) -> 
     if isinstance(cls_or_func, nn.Module):
         wrapper = partial(_attetion_cls_constructor, local_attn_cls=cls_or_func)
     elif isinstance(cls_or_func, Callable):
-        wrapper = partial(_attention_func_constructor, local_attn_cls=cls_or_func)
+        wrapper = partial(_attention_func_constructor, local_attn_func=cls_or_func)
 
     return wrapper

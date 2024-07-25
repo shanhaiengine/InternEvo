@@ -145,12 +145,16 @@ def set_parallel_attr_for_param_groups(model: Union[nn.Module, nn.ModuleList]):
                 setattr(param, IS_REPLICA_ZERO_PARALLEL, True)
 
     def _check_module_hf(_, module):
-        # TODO: check parallel attribute for hf model
-        for param in module.parameters():
-            if gpc.is_initialized(ParallelMode.TENSOR) and is_using_isp():
-                setattr(param, IS_WEIGHT_ZERO_PARALLEL, True)
-            elif gpc.is_initialized(ParallelMode.TENSOR) and not is_using_isp():
-                setattr(param, IS_TENSOR_ZERO_PARALLEL, True)
+        # layer_norm
+        if "RMSNorm" in str(module.__class__.__name__):
+            for param in module.parameters():
+                setattr(param, IS_REPLICA_ZERO_PARALLEL, True)
+        else:
+            for param in module.parameters():
+                if gpc.is_initialized(ParallelMode.WEIGHT) and is_using_isp():
+                    setattr(param, IS_WEIGHT_ZERO_PARALLEL, True)
+                elif gpc.is_initialized(ParallelMode.TENSOR) and not is_using_isp():
+                    setattr(param, IS_TENSOR_ZERO_PARALLEL, True)
 
     for _chunk in unwrap_naive_amp(model):
         # set param parallel attribute

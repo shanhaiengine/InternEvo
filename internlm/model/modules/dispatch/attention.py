@@ -18,7 +18,6 @@ def flash_attn_wo_mask(
         dropout_p=0.0,
         softmax_scale=None,
         causal=True,
-        window_size=(-1, -1),  # -1 means infinite context window
 ):
     attn_output = flash_attn_func(
         query_states,
@@ -26,8 +25,7 @@ def flash_attn_wo_mask(
         value_states,
         dropout_p=dropout_p,
         softmax_scale=softmax_scale,
-        causal=causal,
-        window_size=window_size)
+        causal=causal)
     return attn_output
 
 
@@ -40,7 +38,6 @@ def varlen_flash_attn(
         max_seqlen,
         dropout_p=0.,
         causal=True,
-        window_size=(-1, -1),  # -1 means infinite context window
 ):
     q_unpad, k_unpad, v_unpad = query_states.flatten(0, 1), key_states.flatten(
         0, 1), value_states.flatten(0, 1)
@@ -54,7 +51,6 @@ def varlen_flash_attn(
         max_seqlen,
         dropout_p=dropout_p,
         return_attn_probs=False,
-        causal=causal,
-        window_size=window_size)
+        causal=causal)
     attn_output = attn_output.unsqueeze(0)
     return attn_output
