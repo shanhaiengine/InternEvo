@@ -892,16 +892,21 @@ class DistributedAttention(nn.Module):
         return context
 
 
-def auto_wrap_distributed_attention(cls_or_func: Union[nn.Module, Callable]) -> Callable[[bool, Any, float], nn.Module]:
+def auto_wrap_distributed_attention(cls: nn.Module) -> Callable[[bool, Any, float], nn.Module]:
     """
     Wrap a local attention module to a distributed one, which will be used in the ISP parallelism.
     """
 
     # should we impl distributed attention as a metaclass?
-    def _attetion_cls_constructor(
+    def _attetion_constructor(
         local_attn_cls: type, causal=False, softmax_scale=None, attention_dropout=0.0
     ) -> nn.Module:
-        if gpc.config.parallel["tensor"].get("mode", "mtp") != "isp":
+        try:
+            tp_mode = gpc.config.parallel["tensor"].get("mode", "mtp")
+        except AttributeError:
+            tp_mode = "mtp"
+
+        if tp_mode != "isp":
             return local_attn_cls(causal, softmax_scale, attention_dropout)
         else:
             return DistributedAttention(
@@ -909,17 +914,25 @@ def auto_wrap_distributed_attention(cls_or_func: Union[nn.Module, Callable]) -> 
                 sequence_process_group=gpc.get_group(ParallelMode.TENSOR),
             )
 
+    return partial(_attetion_constructor, local_attn_cls=cls)
+
+
+def auto_wrap_func_distributed_attention(func: Callable) -> Callable[[bool, Any, float], nn.Module]:
+    """
+    Wrap a local attention function to a distributed one, which will be used in the ISP parallelism.
+    """
+
     def _attention_func_constructor(*args, local_attn_func = None, **kwargs) -> Callable:
-        if gpc.config.parallel["tensor"].get("mode", "mtp") != "isp":
+        try:
+            tp_mode = gpc.config.parallel["tensor"].get("mode", "mtp")
+        except AttributeError:
+            tp_mode = "mtp"
+
+        if tp_mode != "isp":
             return local_attn_func(*args, **kwargs)
         else:
             return DistributedAttention(
                 local_attention=local_attn_func, sequence_process_group=gpc.get_group(ParallelMode.TENSOR)
             )(*args, **kwargs)
 
-    if isinstance(cls_or_func, nn.Module):
-        wrapper = partial(_attetion_cls_constructor, local_attn_cls=cls_or_func)
-    elif isinstance(cls_or_func, Callable):
-        wrapper = partial(_attention_func_constructor, local_attn_func=cls_or_func)
-
-    return wrapper
+    return partial(_attention_func_constructor, local_attn_func=func)

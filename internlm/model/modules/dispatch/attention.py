@@ -1,4 +1,4 @@
-from internlm.core.parallel.comm.isp import auto_wrap_distributed_attention
+from internlm.core.parallel.comm.isp import auto_wrap_func_distributed_attention
 
 SUPPORT_FLASH2 = False
 
@@ -10,7 +10,7 @@ except ImportError:
     pass
 
 
-@auto_wrap_distributed_attention
+@auto_wrap_func_distributed_attention
 def flash_attn_wo_mask(
         query_states,
         key_states,
@@ -29,7 +29,7 @@ def flash_attn_wo_mask(
     return attn_output
 
 
-@auto_wrap_distributed_attention
+@auto_wrap_func_distributed_attention
 def varlen_flash_attn(
         query_states,
         key_states,

@@ -163,17 +163,13 @@ def internlm_varlen_attn_forward(
 
     assert SUPPORT_FLASH2
     if use_varlen_atten:
-        q_unpad, k_unpad, v_unpad = query_states.flatten(0, 1), key_states.flatten(0, 1), value_states.flatten(0, 1)
         attn_output = varlen_flash_attn(
-            q_unpad,
-            k_unpad,
-            v_unpad,
-            cu_seqlens,
-            cu_seqlens,
-            max_seqlen,
-            max_seqlen,
-            0,
-            return_attn_probs=False,
+            query_states,
+            key_states,
+            value_states,
+            cumulative_len=cu_seqlens,
+            max_seqlen=max_seqlen,
+            dropout_p=0,
             causal=True,
         )
     else:
