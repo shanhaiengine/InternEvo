@@ -27,6 +27,12 @@ def split_data_sequence_parallel(data, label):
     #    so we need to segment the indexes accordingly.
     if "indexes" in data and gpc.config.parallel["tensor"].get("mode", "mtp") == "isp":
         data["indexes"] = _split(data["indexes"], ParallelMode.TENSOR, dim=_indexes_seq_dim)
+    if (
+        gpc.config.model_type == "hf"
+        and "position_ids" in data
+        and gpc.config.parallel["tensor"].get("mode", "mtp") == "isp"
+    ):
+        data["position_ids"] = _split(data["position_ids"], ParallelMode.TENSOR, dim=_indexes_seq_dim)
 
     data["input_ids"] = _split(data["input_ids"], ParallelMode.TENSOR, dim=_seq_dim)
     label = _split(label, ParallelMode.TENSOR, dim=_seq_dim)
