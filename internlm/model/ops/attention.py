@@ -995,7 +995,7 @@ class CrossAttention(nn.Module):
 
 
 @auto_wrap_func_distributed_attention
-def flash_attn_wo_mask(
+def hf_q_k_v_without_cu_seqlens(
     query_states,
     key_states,
     value_states,
@@ -1003,14 +1003,14 @@ def flash_attn_wo_mask(
     softmax_scale=None,
     causal=True,
 ):
-    attn_output = _flash_fixedlen_qkvsplited_func(
+    attn_output = _flash_fixedlen_qkvsplited_func(  # TODO: currently only support GPU environment
         query_states, key_states, value_states, dropout_p=dropout_p, softmax_scale=softmax_scale, causal=causal
     )
     return attn_output
 
 
 @auto_wrap_func_distributed_attention
-def varlen_flash_attn(
+def hf_q_k_v_with_cu_seqlens(
     query_states,
     key_states,
     value_states,
@@ -1020,7 +1020,7 @@ def varlen_flash_attn(
     causal=True,
 ):
     q_unpad, k_unpad, v_unpad = query_states.flatten(0, 1), key_states.flatten(0, 1), value_states.flatten(0, 1)
-    attn_output = _flash_varlen_qkvsplited_func(
+    attn_output = _flash_varlen_qkvsplited_func(  # TODO: currently only support GPU environment
         q_unpad,
         k_unpad,
         v_unpad,
